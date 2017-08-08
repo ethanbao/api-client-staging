@@ -23,6 +23,7 @@ from google.cloud.proto.pubsub.v1 import pubsub_pb2
 from google.iam.v1 import iam_policy_pb2
 from google.iam.v1 import policy_pb2
 from google.protobuf import empty_pb2
+from google.protobuf import field_mask_pb2
 
 
 class CustomException(Exception):
@@ -75,6 +76,56 @@ class TestPublisherClient(unittest.TestCase):
         grpc_stub.CreateTopic.side_effect = CustomException()
 
         self.assertRaises(errors.GaxError, client.create_topic, name)
+
+    @mock.patch('google.gax.config.create_stub', spec=True)
+    def test_update_topic(self, mock_create_stub):
+        # Mock gRPC layer
+        grpc_stub = mock.Mock()
+        mock_create_stub.return_value = grpc_stub
+
+        client = publisher_client.PublisherClient()
+
+        # Mock request
+        topic = pubsub_pb2.Topic()
+        update_mask = field_mask_pb2.FieldMask()
+
+        # Mock response
+        name = 'name3373707'
+        expected_response = pubsub_pb2.Topic(name=name)
+        grpc_stub.UpdateTopic.return_value = expected_response
+
+        response = client.update_topic(topic, update_mask)
+        self.assertEqual(expected_response, response)
+
+        grpc_stub.UpdateTopic.assert_called_once()
+        args, kwargs = grpc_stub.UpdateTopic.call_args
+        self.assertEqual(len(args), 2)
+        self.assertEqual(len(kwargs), 1)
+        self.assertIn('metadata', kwargs)
+        actual_request = args[0]
+
+        expected_request = pubsub_pb2.UpdateTopicRequest(
+            topic=topic, update_mask=update_mask)
+        self.assertEqual(expected_request, actual_request)
+
+    @mock.patch('google.gax.config.API_ERRORS', (CustomException, ))
+    @mock.patch('google.gax.config.create_stub', spec=True)
+    def test_update_topic_exception(self, mock_create_stub):
+        # Mock gRPC layer
+        grpc_stub = mock.Mock()
+        mock_create_stub.return_value = grpc_stub
+
+        client = publisher_client.PublisherClient()
+
+        # Mock request
+        topic = pubsub_pb2.Topic()
+        update_mask = field_mask_pb2.FieldMask()
+
+        # Mock exception response
+        grpc_stub.UpdateTopic.side_effect = CustomException()
+
+        self.assertRaises(errors.GaxError, client.update_topic, topic,
+                          update_mask)
 
     @mock.patch('google.gax.config.create_stub', spec=True)
     def test_publish(self, mock_create_stub):

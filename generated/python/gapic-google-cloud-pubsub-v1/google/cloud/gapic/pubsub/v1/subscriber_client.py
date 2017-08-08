@@ -338,6 +338,9 @@ class SubscriberClient(object):
         self._create_snapshot = api_callable.create_api_call(
             self.subscriber_stub.CreateSnapshot,
             settings=defaults['create_snapshot'])
+        self._update_snapshot = api_callable.create_api_call(
+            self.subscriber_stub.UpdateSnapshot,
+            settings=defaults['update_snapshot'])
         self._delete_snapshot = api_callable.create_api_call(
             self.subscriber_stub.DeleteSnapshot,
             settings=defaults['delete_snapshot'])
@@ -361,6 +364,7 @@ class SubscriberClient(object):
                             ack_deadline_seconds=None,
                             retain_acked_messages=None,
                             message_retention_duration=None,
+                            labels=None,
                             options=None):
         """
         Creates a subscription to a given topic.
@@ -424,6 +428,7 @@ class SubscriberClient(object):
             of acknowledged messages, and thus configures how far back in time a ``Seek``
             can be done. Defaults to 7 days. Cannot be more than 7 days or less than 10
             minutes.
+          labels (dict[string -> string]): User labels.
           options (:class:`google.gax.CallOptions`): Overrides the default
             settings for this call, e.g, timeout, retries etc.
 
@@ -434,14 +439,14 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.Subscription(
             name=name,
             topic=topic,
             push_config=push_config,
             ack_deadline_seconds=ack_deadline_seconds,
             retain_acked_messages=retain_acked_messages,
-            message_retention_duration=message_retention_duration)
+            message_retention_duration=message_retention_duration,
+            labels=labels)
         return self._create_subscription(request, options)
 
     def get_subscription(self, subscription, options=None):
@@ -467,7 +472,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.GetSubscriptionRequest(subscription=subscription)
         return self._get_subscription(request, options)
 
@@ -475,6 +479,10 @@ class SubscriberClient(object):
         """
         Updates an existing subscription. Note that certain properties of a
         subscription, such as its topic, are not modifiable.
+        NOTE:  The style guide requires body: \"subscription\" instead of body: \"*\".
+        Keeping the latter for internal consistency in V1, however it should be
+        corrected in V2.  See
+        https://cloud.google.com/apis/design/standard_methods#update for details.
 
         Example:
           >>> from google.cloud.gapic.pubsub.v1 import subscriber_client
@@ -499,7 +507,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.UpdateSubscriptionRequest(
             subscription=subscription, update_mask=update_mask)
         return self._update_subscription(request, options)
@@ -546,7 +553,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.ListSubscriptionsRequest(
             project=project, page_size=page_size)
         return self._list_subscriptions(request, options)
@@ -575,7 +581,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.DeleteSubscriptionRequest(
             subscription=subscription)
         self._delete_subscription(request, options)
@@ -618,7 +623,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.ModifyAckDeadlineRequest(
             subscription=subscription,
             ack_ids=ack_ids,
@@ -654,7 +658,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.AcknowledgeRequest(
             subscription=subscription, ack_ids=ack_ids)
         self._acknowledge(request, options)
@@ -698,7 +701,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.PullRequest(
             subscription=subscription,
             max_messages=max_messages,
@@ -781,7 +783,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.ModifyPushConfigRequest(
             subscription=subscription, push_config=push_config)
         self._modify_push_config(request, options)
@@ -828,7 +829,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.ListSnapshotsRequest(
             project=project, page_size=page_size)
         return self._list_snapshots(request, options)
@@ -882,10 +882,45 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.CreateSnapshotRequest(
             name=name, subscription=subscription)
         return self._create_snapshot(request, options)
+
+    def update_snapshot(self, snapshot, update_mask, options=None):
+        """
+        Updates an existing snapshot. Note that certain properties of a snapshot
+        are not modifiable.
+        NOTE:  The style guide requires body: \"snapshot\" instead of body: \"*\".
+        Keeping the latter for internal consistency in V1, however it should be
+        corrected in V2.  See
+        https://cloud.google.com/apis/design/standard_methods#update for details.
+
+        Example:
+          >>> from google.cloud.gapic.pubsub.v1 import subscriber_client
+          >>> from google.cloud.proto.pubsub.v1 import pubsub_pb2
+          >>> from google.protobuf import field_mask_pb2
+          >>> client = subscriber_client.SubscriberClient()
+          >>> snapshot = pubsub_pb2.Snapshot()
+          >>> update_mask = field_mask_pb2.FieldMask()
+          >>> response = client.update_snapshot(snapshot, update_mask)
+
+        Args:
+          snapshot (:class:`google.cloud.proto.pubsub.v1.pubsub_pb2.Snapshot`): The updated snpashot object.
+          update_mask (:class:`google.protobuf.field_mask_pb2.FieldMask`): Indicates which fields in the provided snapshot to update.
+            Must be specified and non-empty.
+          options (:class:`google.gax.CallOptions`): Overrides the default
+            settings for this call, e.g, timeout, retries etc.
+
+        Returns:
+          A :class:`google.cloud.proto.pubsub.v1.pubsub_pb2.Snapshot` instance.
+
+        Raises:
+          :exc:`google.gax.errors.GaxError` if the RPC is aborted.
+          :exc:`ValueError` if the parameters are invalid.
+        """
+        request = pubsub_pb2.UpdateSnapshotRequest(
+            snapshot=snapshot, update_mask=update_mask)
+        return self._update_snapshot(request, options)
 
     def delete_snapshot(self, snapshot, options=None):
         """
@@ -910,7 +945,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = pubsub_pb2.DeleteSnapshotRequest(snapshot=snapshot)
         self._delete_snapshot(request, options)
 
@@ -957,7 +991,6 @@ class SubscriberClient(object):
             time=time,
             snapshot=snapshot, )
 
-        # Create the request object.
         request = pubsub_pb2.SeekRequest(
             subscription=subscription, time=time, snapshot=snapshot)
         return self._seek(request, options)
@@ -993,7 +1026,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = iam_policy_pb2.SetIamPolicyRequest(
             resource=resource, policy=policy)
         return self._set_iam_policy(request, options)
@@ -1024,7 +1056,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = iam_policy_pb2.GetIamPolicyRequest(resource=resource)
         return self._get_iam_policy(request, options)
 
@@ -1059,7 +1090,6 @@ class SubscriberClient(object):
           :exc:`google.gax.errors.GaxError` if the RPC is aborted.
           :exc:`ValueError` if the parameters are invalid.
         """
-        # Create the request object.
         request = iam_policy_pb2.TestIamPermissionsRequest(
             resource=resource, permissions=permissions)
         return self._test_iam_permissions(request, options)

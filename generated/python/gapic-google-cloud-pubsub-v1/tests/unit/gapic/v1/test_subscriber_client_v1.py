@@ -451,7 +451,10 @@ class TestSubscriberClient(unittest.TestCase):
         requests = [request]
 
         # Mock response
-        expected_response = pubsub_pb2.StreamingPullResponse()
+        received_messages_element = pubsub_pb2.ReceivedMessage()
+        received_messages = [received_messages_element]
+        expected_response = pubsub_pb2.StreamingPullResponse(
+            received_messages=received_messages)
         grpc_stub.StreamingPull.return_value = iter([expected_response])
 
         response = client.streaming_pull(requests)
@@ -637,6 +640,57 @@ class TestSubscriberClient(unittest.TestCase):
 
         self.assertRaises(errors.GaxError, client.create_snapshot, name,
                           subscription)
+
+    @mock.patch('google.gax.config.create_stub', spec=True)
+    def test_update_snapshot(self, mock_create_stub):
+        # Mock gRPC layer
+        grpc_stub = mock.Mock()
+        mock_create_stub.return_value = grpc_stub
+
+        client = subscriber_client.SubscriberClient()
+
+        # Mock request
+        snapshot = pubsub_pb2.Snapshot()
+        update_mask = field_mask_pb2.FieldMask()
+
+        # Mock response
+        name = 'name3373707'
+        topic = 'topic110546223'
+        expected_response = pubsub_pb2.Snapshot(name=name, topic=topic)
+        grpc_stub.UpdateSnapshot.return_value = expected_response
+
+        response = client.update_snapshot(snapshot, update_mask)
+        self.assertEqual(expected_response, response)
+
+        grpc_stub.UpdateSnapshot.assert_called_once()
+        args, kwargs = grpc_stub.UpdateSnapshot.call_args
+        self.assertEqual(len(args), 2)
+        self.assertEqual(len(kwargs), 1)
+        self.assertIn('metadata', kwargs)
+        actual_request = args[0]
+
+        expected_request = pubsub_pb2.UpdateSnapshotRequest(
+            snapshot=snapshot, update_mask=update_mask)
+        self.assertEqual(expected_request, actual_request)
+
+    @mock.patch('google.gax.config.API_ERRORS', (CustomException, ))
+    @mock.patch('google.gax.config.create_stub', spec=True)
+    def test_update_snapshot_exception(self, mock_create_stub):
+        # Mock gRPC layer
+        grpc_stub = mock.Mock()
+        mock_create_stub.return_value = grpc_stub
+
+        client = subscriber_client.SubscriberClient()
+
+        # Mock request
+        snapshot = pubsub_pb2.Snapshot()
+        update_mask = field_mask_pb2.FieldMask()
+
+        # Mock exception response
+        grpc_stub.UpdateSnapshot.side_effect = CustomException()
+
+        self.assertRaises(errors.GaxError, client.update_snapshot, snapshot,
+                          update_mask)
 
     @mock.patch('google.gax.config.create_stub', spec=True)
     def test_delete_snapshot(self, mock_create_stub):
